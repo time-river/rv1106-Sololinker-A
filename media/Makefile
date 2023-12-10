@@ -25,12 +25,12 @@ media_src := $(dir $(media_src))
 all:
 	@rm -rf $(RK_MEDIA_OUTPUT)
 	$(foreach target,$(media_src),make -C $(target)||exit -1;)
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu. extract library only."
-    else
-        @echo "RootFS type is not Ubuntu. Proceeding with the build."
-		$(call MAROC_COPY_PKG_TO_MEDIA_OUTPUT, $(RK_PROJECT_PATH_MEDIA), $(RK_MEDIA_OUTPUT))
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu. extract library only."
+else
+	@echo "RootFS type is not Ubuntu. Proceeding with the build."
+	$(call MAROC_COPY_PKG_TO_MEDIA_OUTPUT, $(RK_PROJECT_PATH_MEDIA), $(RK_MEDIA_OUTPUT))
+endif
 
 distclean: clean
 

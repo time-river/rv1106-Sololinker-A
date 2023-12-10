@@ -445,74 +445,72 @@ kernel_clean:
 rootfs_prepare: prepare
 	@echo -e "$(C_GREEN) ==sysdrv== prepare rootfs   $(C_NORMAL)"
 
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu"
-		@tar -zxpf $(SYSDRV_DIR)/tools/board/rootfs_ubuntu.tar.gz -C $(SYSDRV_DIR_OUT_ROOTFS)
-		@echo -e "$(C_GREEN) ==sysdrv== uncompress Ubuntu rootfs finished!   $(C_NORMAL)"
-    else
-		@echo "RootFS type is not Ubuntu. Proceeding with the build."
-		tar xf $(SYSDRV_DIR)/tools/board/rootfs_script.tar -C $(SYSDRV_DIR_OUT_ROOTFS)
-		tar xjf $(TOOLCHAIN_DIR)/$(TOOLCHAIN_RUNTIME_LIB)/$(TOOLCHAIN_RUNTIME_LIB_C) -C $(SYSDRV_DIR_OUT_ROOTFS)
-		pushd $(SYSDRV_DIR_OUT_ROOTFS)/lib/ ; mv -fv \
-			libasan_preinit.o \
-			libasan.so* \
-			libtsan.so* \
-			libubsan.so* \
-			libSegFault.so \
-			libmemusage.so* \
-			libpcprofile.so* \
-			libthread_db*.so* \
-			libBrokenLocale* \
-			libinproctrace.so \
-			$(SYSDRV_DIR_OUT_BOARD); \
-		popd
-
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu"
+	@tar -zxpf $(SYSDRV_DIR)/tools/board/rootfs_ubuntu.tar.gz -C $(SYSDRV_DIR_OUT_ROOTFS)
+	@echo -e "$(C_GREEN) ==sysdrv== uncompress Ubuntu rootfs finished!   $(C_NORMAL)"
+else
+	@echo "RootFS type is not Ubuntu. Proceeding with the build."
+	tar xf $(SYSDRV_DIR)/tools/board/rootfs_script.tar -C $(SYSDRV_DIR_OUT_ROOTFS)
+	tar xjf $(TOOLCHAIN_DIR)/$(TOOLCHAIN_RUNTIME_LIB)/$(TOOLCHAIN_RUNTIME_LIB_C) -C $(SYSDRV_DIR_OUT_ROOTFS)
+	pushd $(SYSDRV_DIR_OUT_ROOTFS)/lib/ ; mv -fv \
+		libasan_preinit.o \
+		libasan.so* \
+		libtsan.so* \
+		libubsan.so* \
+		libSegFault.so \
+		libmemusage.so* \
+		libpcprofile.so* \
+		libthread_db*.so* \
+		libBrokenLocale* \
+		libinproctrace.so \
+		$(SYSDRV_DIR_OUT_BOARD); \
+	popd
+endif
 
 ##########################################################################################
 #	build busybox
 ##########################################################################################
 busybox_menuconfig:
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu skip..."
-    else
-		@$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) menuconfig \
-			-C $(BUSYBOX_DIR)/$(BUSYBOX_VER)/
-		@cp -f $(BUSYBOX_DIR)/$(BUSYBOX_VER)/.config \
-				$(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_CFG);
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu skip..."
+else
+	@$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) menuconfig \
+		-C $(BUSYBOX_DIR)/$(BUSYBOX_VER)/
+	@cp -f $(BUSYBOX_DIR)/$(BUSYBOX_VER)/.config \
+		$(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_CFG);
+endif
 
 busybox: prepare
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu skip..."
-    else
-		@echo -e "$(C_GREEN) ==sysdrv== build busybox   $(C_NORMAL)"
-		test -f $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install/bin/busybox  || (\
-			rm $(BUSYBOX_DIR)/$(BUSYBOX_VER) -rf ;\
-			mkdir -p $(BUSYBOX_DIR) ;\
-			tar xjf $(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_VER).tar.bz2 -C $(BUSYBOX_DIR) ;\
-			cp $(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_CFG) $(BUSYBOX_DIR)/$(BUSYBOX_VER)/.config ;\
-			cp -fv $(SYSDRV_DIR)/tools/board/busybox/*.patch $(SYSDRV_DIR)/tools/board/busybox/busybox.patch.sh $(BUSYBOX_DIR)/$(BUSYBOX_VER)/ ;\
-			pushd $(BUSYBOX_DIR)/$(BUSYBOX_VER)/;$(SHELL) ./busybox.patch.sh ; $(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -j$(SYSDRV_JOBS)  || exit 1; popd ;\
-			CFLAGS="$(SYSDRV_CROSS_CFLAGS)" \
-			$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) -C $(BUSYBOX_DIR)/$(BUSYBOX_VER) install  || exit 1;\
-		);
-	ifeq ($(SYSDRV_BUILD_RAMDISK_FLAG),YES)
-		tar xf $(SYSDRV_DIR)/tools/board/rootfs_script.tar -C $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install
-	ifneq ($(OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR),)
-		$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR), \
-			$(SYSDRV_DIR)/tools/board/busybox/init \
-			$(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install)
-	else
-		$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(SYSDRV_DIR_OUT_ROOTFS), \
-			$(SYSDRV_DIR)/tools/board/busybox/init \
-			$(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install)
-	endif
-	else
-		cp -af $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install/* $(SYSDRV_DIR_OUT_ROOTFS)
-	endif
-
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu skip..."
+else # RK_ROOTFS_TYPE
+	@echo -e "$(C_GREEN) ==sysdrv== build busybox   $(C_NORMAL)"
+	test -f $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install/bin/busybox  || (\
+		rm $(BUSYBOX_DIR)/$(BUSYBOX_VER) -rf ;\
+		mkdir -p $(BUSYBOX_DIR) ;\
+		tar xjf $(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_VER).tar.bz2 -C $(BUSYBOX_DIR) ;\
+		cp $(SYSDRV_DIR)/tools/board/busybox/$(BUSYBOX_CFG) $(BUSYBOX_DIR)/$(BUSYBOX_VER)/.config ;\
+		cp -fv $(SYSDRV_DIR)/tools/board/busybox/*.patch $(SYSDRV_DIR)/tools/board/busybox/busybox.patch.sh $(BUSYBOX_DIR)/$(BUSYBOX_VER)/ ;\
+		pushd $(BUSYBOX_DIR)/$(BUSYBOX_VER)/;$(SHELL) ./busybox.patch.sh ; $(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -j$(SYSDRV_JOBS)  || exit 1; popd ;\
+		CFLAGS="$(SYSDRV_CROSS_CFLAGS)" \
+		$(MAKE) CROSS_COMPILE=$(CROSS_COMPILE) -C $(BUSYBOX_DIR)/$(BUSYBOX_VER) install  || exit 1;\
+	);
+ifeq ($(SYSDRV_BUILD_RAMDISK_FLAG),YES)
+	tar xf $(SYSDRV_DIR)/tools/board/rootfs_script.tar -C $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install
+ifneq ($(OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR),)
+	$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR), \
+		$(SYSDRV_DIR)/tools/board/busybox/init \
+		$(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install)
+else # OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR
+	$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(SYSDRV_DIR_OUT_ROOTFS), \
+		$(SYSDRV_DIR)/tools/board/busybox/init \
+		$(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install)
+endif # OUTPUT_SYSDRV_RAMDISK_TINY_ROOTFS_DIR
+else # SYSDRV_BUILD_RAMDISK_FLAG
+	cp -af $(BUSYBOX_DIR)/$(BUSYBOX_VER)/_install/* $(SYSDRV_DIR_OUT_ROOTFS)
+endif # SYSDRV_BUILD_RAMDISK_FLAG
+endif # RK_ROOTFS_TYPE
 
 busybox_clean:
 	$(AT)rm -rf $(BUSYBOX_DIR)/$(BUSYBOX_VER)
@@ -541,11 +539,11 @@ else
 include $(SYSDRV_DIR)/tools/board/Makefile.tools.board.mk
 endif
 boardtools: tools_board-builds
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu, skip..."
-    else
-		@echo -e "$(C_GREEN) ==sysdrv== build tools which run on board   $(C_NORMAL)"
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu, skip..."
+else
+	@echo -e "$(C_GREEN) ==sysdrv== build tools which run on board   $(C_NORMAL)"
+endif
 
 boardtools_clean: tools_board-clean
 	@echo -e "$(C_GREEN) ==sysdrv== build $@ done$(C_NORMAL)"
@@ -580,11 +578,11 @@ drv_clean:
 rootfs: rootfs_prepare pctools busybox boardtools drv
 	@echo -e "$(C_GREEN) ==sysdrv== build rootfs  $(C_NORMAL)"
 	make -C $(SYSDRV_DIR) strip
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		pushd $(SYSDRV_DIR)/out;tar cf $(OUT_ROOTFS).tar $(OUT_ROOTFS);popd
-    else
-		pushd $(SYSDRV_DIR)/out;tar cf $(OUT_ROOTFS).tar $(OUT_ROOTFS);popd
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	pushd $(SYSDRV_DIR)/out;tar cf $(OUT_ROOTFS).tar $(OUT_ROOTFS);popd
+else
+	pushd $(SYSDRV_DIR)/out;tar cf $(OUT_ROOTFS).tar $(OUT_ROOTFS);popd
+endif
 	@# RK_PARTITION_FS_TYPE_CFG is defined outside of sysdrv,
 	@# so if defined RK_PARTITION_FS_TYPE_CFG, we ignore SYSDRV_ROOTFS_BUILD_TARGET
 	@test "$(ROOTFS_PART_SIZE)" = "FAIL" || \
@@ -595,14 +593,14 @@ rootfs: rootfs_prepare pctools busybox boardtools drv
 	@echo -e "$(C_GREEN) ==sysdrv== finish sysdrv build  $(C_NORMAL)"
 
 strip:
-    ifeq ($(RK_ROOTFS_TYPE), ubuntu)
-		@echo "RootFS type is Ubuntu, skip..."
-    else
-		ifeq ($(SYSDRV_BUILD_VERSION),RELEASE)
-			@echo -e "$(C_GREEN) ==sysdrv== strip files of rootfs  $(C_NORMAL)"
-			$(call MAROC_STRIP_DEBUG_SYMBOL, $(SYSDRV_DIR_OUT_ROOTFS))
-		endif
-    endif
+ifeq ($(RK_ROOTFS_TYPE), ubuntu)
+	@echo "RootFS type is Ubuntu, skip..."
+else # RK_ROOTFS_TYPE
+ifeq ($(SYSDRV_BUILD_VERSION),RELEASE)
+	@echo -e "$(C_GREEN) ==sysdrv== strip files of rootfs  $(C_NORMAL)"
+	$(call MAROC_STRIP_DEBUG_SYMBOL, $(SYSDRV_DIR_OUT_ROOTFS))
+endif
+endif # RK_ROOTFS_TYPE
 
 rootfs_ubi:
 	@echo -e "$(C_GREEN) ==sysdrv== build ubi rootfs  $(C_NORMAL)"
