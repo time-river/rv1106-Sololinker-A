@@ -1,0 +1,1 @@
+project/cfg/BoardConfig_IPC/BoardConfig-EMMC-NONE-Hinlink-sololinker-A-Ubuntu.mk
