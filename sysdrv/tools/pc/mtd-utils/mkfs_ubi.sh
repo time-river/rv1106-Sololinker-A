@@ -275,7 +275,17 @@ echo "set -e" >> $ROOTFS_IMAGE_FAKEROOT_UBI
 
 if which fakeroot; then
 	FAKEROOT_TOOL="`which fakeroot`"
-	echo "chown -h -R 0:0 $ROOTFS_SRC_DIR" >> $ROOTFS_IMAGE_FAKEROOT_UBI
+	cat >> $ROOTFS_IMAGE_FAKEROOT_UBI << EOF
+suidfiles=\$(find ${ROOTFS_SRC_DIR} -perm /u=s)
+sgidfiles=\$(find ${ROOTFS_SRC_DIR} -perm /g=s)
+chown -h -R 0:0 $ROOTFS_SRC_DIR
+for file in \${suidfiles}; do
+	chmod u+s \${file}
+done
+for file in \${sgidfiles}; do
+	chmod g+s \${file}
+done
+EOF
 else
 	msg_warn "Install fakeroot First."
 	msg_warn "   sudo apt-get install fakeroot"
@@ -287,10 +297,10 @@ mk_ubi_image_fake_for_rootfs 0x40000 2048
 mk_ubi_image_fake_for_rootfs 0x40000 4096
 if [ "$FAKEROOT_TOOL" = "NO_FOUND" ]; then
 	msg_warn "No found fakeroot tool..."
-	$ROOTFS_IMAGE_FAKEROOT_UBI
+	sudo $ROOTFS_IMAGE_FAKEROOT_UBI
 else
 	echo "start build fakeroot image"
-	$FAKEROOT_TOOL -- $ROOTFS_IMAGE_FAKEROOT_UBI
+	sudo $FAKEROOT_TOOL -- $ROOTFS_IMAGE_FAKEROOT_UBI
 fi
 
 if [ "$RK_DEBUG" != "1" ]; then

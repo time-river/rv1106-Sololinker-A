@@ -535,6 +535,11 @@ tools_board-builds:
 	@echo "RootFS type is Ubuntu, skip..."
 tools_board-clean:
 	@echo "RootFS type is Ubuntu, skip..."
+else ifeq ($(RK_ROOTFS_TYPE), alpine)
+tools_board-builds:
+	@echo "RootFS type is alpine, skip..."
+tools_board-clean:
+	@echo "RootFS type is alpine, skip..."
 else
 include $(SYSDRV_DIR)/tools/board/Makefile.tools.board.mk
 endif
@@ -572,10 +577,35 @@ drv_clean:
 	@-rm -rf $(SYSDRV_KERNEL_MOD_PATH) $(KERNEL_DIR_DRV_KO)
 	@echo -e "$(C_GREEN) ==sysdrv== clean drv $(C_NORMAL)"
 
+ifeq ($(RK_ROOTFS_TYPE), alpine)
+rootfs: alpine_rootfs
+else
+rootfs: orig_rootfs
+endif
+	@echo "build rootfs done"
+
+alpine_rootfs_prepare:
+	@echo -e "$(C_GREEN) ==sysdrv== prepare rootfs   $(C_NORMAL)"
+	make -C $(SYSDRV_DIR)/tools/board/alpine/ alpine
+	@tar -xzpf $(SYSDRV_DIR)/tools/board/rootfs_alpine.tar.gz -C $(SYSDRV_DIR_OUT_ROOTFS) --numeric-owner
+	@echo -e "$(C_GREEN) ==sysdrv== uncompress alpine rootfs finished!   $(C_NORMAL)"
+
+alpine_rootfs: prepare alpine_rootfs_prepare pctools drv
+	@echo -e "$(C_GREEN) ==sysdrv== build alpine rootfs  $(C_NORMAL)"
+	pushd $(SYSDRV_DIR)/out; sudo tar cf $(OUT_ROOTFS).tar $(OUT_ROOTFS) --numeric-owner;popd
+	@# RK_PARTITION_FS_TYPE_CFG is defined outside of sysdrv,
+	@# so if defined RK_PARTITION_FS_TYPE_CFG, we ignore SYSDRV_ROOTFS_BUILD_TARGET
+	@test "$(ROOTFS_PART_SIZE)" = "FAIL" || \
+		test "$(RK_PARTITION_FS_TYPE_CFG)x" != "x" || \
+		make -C $(SYSDRV_DIR) $(SYSDRV_ROOTFS_BUILD_TARGET)
+	$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(OUTPUT_ROOTFS_SOURCE_DIR), $(SYSDRV_DIR)/out/$(OUT_ROOTFS).tar )
+	$(call MAROC_COPY_PKG_TO_SYSDRV_OUTPUT, $(OUTPUT_ROOTFS_TOOLS_DIR), $(SYSDRV_DIR)/out/bin )
+	@echo -e "$(C_GREEN) ==sysdrv== finish sysdrv build  $(C_NORMAL)"
+
 ##########################################################################################
 #	build rootfs
 ##########################################################################################
-rootfs: rootfs_prepare pctools busybox boardtools drv
+orig_rootfs: rootfs_prepare pctools busybox boardtools drv
 	@echo -e "$(C_GREEN) ==sysdrv== build rootfs  $(C_NORMAL)"
 	make -C $(SYSDRV_DIR) strip
 ifeq ($(RK_ROOTFS_TYPE), ubuntu)

@@ -1096,7 +1096,7 @@ function __PACKAGE_ROOTFS()
 	local rootfs_tarball _target_dir _install_dir
 	rootfs_tarball="$RK_PROJECT_PATH_SYSDRV/rootfs_${RK_LIBC_TPYE}_${RK_CHIP}.tar"
 	if [ -f $rootfs_tarball ]; then
-		tar xf $rootfs_tarball -C $RK_PROJECT_OUTPUT
+		tar xf $rootfs_tarball -C $RK_PROJECT_OUTPUT --xattrs-include='*.*' --numeric-owner
 	else
 		msg_error "Not found rootfs tarball: $rootfs_tarball"
 		exit 1
